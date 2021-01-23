@@ -42,7 +42,7 @@ void graph1D (vector<string> input, string format = "xy") {
 		while (getline(fileInput, line)) {
 			if (line[0]=='#' || line[0]=='\0') continue;
 			
-			if (format == "xdxydx")
+			if (format == "xdxydy")
 				stringstream(line) >> x >> dx >> y >> dy;
 			else if (format == "xydy")
 				stringstream(line) >> x >> y >> dy;
