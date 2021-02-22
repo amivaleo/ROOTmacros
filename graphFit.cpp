@@ -10,20 +10,21 @@
  * Errors will be considered as absolute errors.
  * If there is more than 1 input file, all graphs will be superimposed.
  */
- 
+
+
 void definePar(TF1 *, unsigned int);
 
 void graphFit(string input, string format = "xy") {
 	char rangeChoice;	
 	double xMin, xMax;
-	
 	unsigned int point = 0;
-	double xf, dxf, yf, dyf, chi2(0);
+	double xf, dxf, yf, dyf;
 	vector<double> x, y;
 	string line;
-	
 	unsigned int fitFunctionType;
 	unsigned int nParameters;
+	
+	// short list of suggested functions
 	vector<string> fitFunction = {
 		"<user defined fitFunction>",
 		"[0]+[1]*x",
@@ -37,7 +38,6 @@ void graphFit(string input, string format = "xy") {
 		"[0]+[1]*x**[2]+[3]*x**[4]*exp([5]*x**[6])"
 	};
 	
-	
 	TGraphErrors * graph = new TGraphErrors();
 	TGraph * residue = new TGraph();
 	
@@ -48,18 +48,24 @@ void graphFit(string input, string format = "xy") {
 	gPad->SetGrid();
 	gStyle->SetOptFit(111);
 	
+	// Read the input file
 	ifstream fileInput (input);
 	while (getline(fileInput, line)) {
 		if (line[0] == '#' || line[0] == '\0') continue;
 	
 		if (format == "xdxydy")
 			stringstream(line) >> xf >> dxf >> yf >> dyf;
-		else if (format == "xydy")
+		else if (format == "xydy") {
 			stringstream(line) >> xf >> yf >> dyf;
-		else if (format == "xdxy")
+			dxf = 0;
+		} else if (format == "xdxy") {
 			stringstream(line) >> xf >> dxf >> yf;
-		else
+			dyf = 0;
+		} else {
 			stringstream(line) >> xf >> yf;
+			dxf = 0;
+			dyf = 0;
+		}
 		
 		x.push_back(xf);
 		y.push_back(yf);
@@ -70,12 +76,14 @@ void graphFit(string input, string format = "xy") {
 	}
 	
 	graph->SetTitle("; x; y");
-	graph->Draw("APLE");
+	graph->SetMarkerStyle(8);
+	graph->Draw("APE");
 	c->cd(1)->Update();
 	
 	xMin = x[0];
 	xMax = x[x.size() - 1];
 	
+	// Let the user choose the x range for the fit
 	do {
 		cout << "Set fitting region [Y/N]? (If N, the total range [" << xMin << "; " << xMax << "] will be used) ";
 		cin >> rangeChoice;
@@ -95,11 +103,13 @@ void graphFit(string input, string format = "xy") {
 	do {
 		cout << "Choose the fit function [0 - " << fitFunction.size() - 1 << "]: ";
 		cin >> fitFunctionType;
-	} while (fitFunctionType > fitFunction.size());
+	} while (fitFunctionType > fitFunction.size() - 1);
 	
+	// if a custom function is chosen
 	if (fitFunctionType == 0) {
 		cout << "Do not insert spaces!" << endl;
 		cout << "No syntax validation is performed!" << endl;
+		cout << "Visit https://root.cern.ch/root/html524/TMath.html for using special functions." << endl;
 		cout << "Insert custom fitFunction: ";
 		cin >> fitFunction[0];
 	}
@@ -110,11 +120,16 @@ void graphFit(string input, string format = "xy") {
 	definePar(fit, nParameters);
 	
 	fitFunction[fitFunctionType];
+
+	fit->SetLineColor(2);
+	fit->SetLineWidth(3);
 	
+	// Draw the fit and add the function in the graph title
 	graph->Fit("fit");
 	graph->SetTitle(fitFunction[fitFunctionType].c_str());
 	c->cd(1)->Update();
-
+	
+	// Show the residual r = fit(x) - y
 	c->cd(2);
 	gPad->SetTicks();
 	gPad->SetGrid();
@@ -124,34 +139,22 @@ void graphFit(string input, string format = "xy") {
 	cout << "Residuals:" << endl;
 	cout << "fitted\tdata" << endl;
 	for (unsigned int i = 0; i < x.size(); i++) {
-		cout << fit->Eval(x[point]) << "\t" << y[point] << endl;
 		residue->SetPoint(point, x[point], fit->Eval(x[point]) - y[point]);
 		++point;
 	}
 	
 	residue->SetTitle("Residuals; x; f(x) - y");
-	residue->SetMarkerStyle(21);
+	residue->SetMarkerStyle(8);
 	residue->Draw("APL");
-	
-	point = 0;
-	for (unsigned int i = 0; i < x.size(); ++i) {
-		if (y[i] == 0) break;
-		chi2 += TMath::Power(fit->Eval(x[i]) - y[i], 2) / y[i];
-		++point;
-	}
-	chi2 /= point - 1;
-	
-//	cout << "chi2: " << chi2 << endl;
 	
 	x.clear();
 	y.clear();
 	
-	graph->SaveAs((input + ".root").c_str());
+	c->SaveAs((input + ".root").c_str());
 	return;
 }
 
 void definePar(TF1 * fit, unsigned int nParameters) {
-	const string green("\033[1;32m");	// request
 	double value;
 	cout << "Parameter fist guess:" << endl;
 	for (unsigned int i = 0; i < nParameters; i++) {
