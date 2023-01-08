@@ -15,7 +15,7 @@
 void definePar(TF1 *, unsigned int);
 
 void graphFit(string input, string format = "xy") {
-	char rangeChoice;	
+	char rangeChoice;
 	double xMin, xMax;
 	unsigned int point = 0;
 	double xf, dxf, yf, dyf;
@@ -23,20 +23,16 @@ void graphFit(string input, string format = "xy") {
 	string line;
 	unsigned int fitFunctionType;
 	unsigned int nParameters;
+	vector<string> fitFunction;
+	ofstream functionTypes ("/usr/share/root/macros/functionTypes", ios::app);
+	ifstream functionTypesRead ("/usr/share/root/macros/functionTypes");
+	
+	fitFunction.push_back("<user defined fitFunction>");
 	
 	// short list of suggested functions
-	vector<string> fitFunction = {
-		"<user defined fitFunction>",
-		"[0]+[1]*x",
-		"[0]+[1]*exp([2]*x**[3]-[4])",
-		"[0]+[1]*x+[2]*x**2",
-		"[0]+[1]*x+[2]*x**2+[3]*x**3",
-		"[0]+[1]*x+[2]*x**2+[3]*x**3+[4]*x**4",
-		"[0]+[1]*x**[2]*exp([3]*x**[4])",
-		"[0]+[1]*x+[2]*x**2+[3]*x**3+[4]*x**4+[5]*x**[6]*exp([7]*x**[8])",
-		"[0]+[1]*x**[2]*(1-x)**[3]",
-		"[0]+[1]*x**[2]+[3]*x**[4]*exp([5]*x**[6])"
-	};
+	while (getline(functionTypesRead, line)) {
+		fitFunction.push_back(line);
+	}
 	
 	TGraphErrors * graph = new TGraphErrors();
 	TGraph * residue = new TGraph();
@@ -51,7 +47,7 @@ void graphFit(string input, string format = "xy") {
 	// Read the input file
 	ifstream fileInput (input);
 	while (getline(fileInput, line)) {
-		if (line[0] == '#' || line[0] == '\0') continue;
+		if (line[0] == '#' || line[0] == '\0' || line[0] == ' ') continue;
 	
 		if (format == "xdxydy")
 			stringstream(line) >> xf >> dxf >> yf >> dyf;
@@ -97,7 +93,7 @@ void graphFit(string input, string format = "xy") {
 	}
 	
 	cout << "Available default fit fitFunctions:" << endl;
-	for (unsigned int i = 0; i < fitFunction.size(); ++i)
+	for (size_t i = 0; i < fitFunction.size(); ++i)
 		cout << "	" << i << " :: " << "	" << fitFunction[i] << endl;
 	
 	do {
@@ -112,6 +108,26 @@ void graphFit(string input, string format = "xy") {
 		cout << "Visit https://root.cern.ch/root/html524/TMath.html for using special functions." << endl;
 		cout << "Insert custom fitFunction: ";
 		cin >> fitFunction[0];
+		
+		for (size_t i = 0; i < fitFunction.size(); i++) {
+			if (i == 0)
+				continue;
+			if (fitFunction[0] == fitFunction[i]) {
+				cout << "The inserted function is already in the set at line " << i << endl;
+				rangeChoice = 'e';
+				break;
+			}
+		}
+	}
+	
+	if (rangeChoice != 'e') {
+		do {
+			cout << "Would you like to save the inserted function for next uses? [Y/N] ";
+			cin >> rangeChoice;
+		} while (rangeChoice != 'Y' && rangeChoice != 'N' && rangeChoice != 'y' && rangeChoice != 'n');
+				
+		if (rangeChoice == 'Y' || rangeChoice == 'y')
+			functionTypes << fitFunction[0];
 	}
 	
 	TF1 * fit = new TF1 ("fit", fitFunction[fitFunctionType].c_str(), xMin, xMax);
@@ -119,8 +135,6 @@ void graphFit(string input, string format = "xy") {
 	nParameters = count(fitFunction[fitFunctionType].begin(), fitFunction[fitFunctionType].end(), '[');
 	definePar(fit, nParameters);
 	
-	fitFunction[fitFunctionType];
-
 	fit->SetLineColor(2);
 	fit->SetLineWidth(3);
 	

@@ -10,14 +10,18 @@
  * Errors will be considered as absolute errors.
  * If there is more than 1 input file, all graphs will be superimposed.
  */
+ 
+#include "MODULE.h"
 
-void graph1D (vector<string> input, string format = "xy") {
+void graph1D (vector<string> input, vector<string> outputFormat = {"root"}, string format = "xy") {
 	const string blue("\033[1;34m");	// info
 	const string green("\033[1;32m");	// request
 	const string red("\033[1;31m");		// errors
 	const string yellow("\033[1;33m");	// warnings
+	
+	Int_t colorID = 2;
 
-	string line;
+	string line, outputFile;
 	unsigned int point = 0;
 	Double_t x, y, dx(0), dy(0);
 	
@@ -31,7 +35,11 @@ void graph1D (vector<string> input, string format = "xy") {
 		graph->SetMarkerSize(1);
 		graph->SetMarkerStyle(20);
 		
-		legend->AddEntry(graph, input[i].c_str(), "lep");
+		if (legendItem.size() == input.size()) {
+			legend->AddEntry(graph, legendItem[i].c_str(), "lep");
+		} else {
+			legend->AddEntry(graph, input[i].c_str(), "lep");
+		}
 		
 		ifstream fileInput (input[i].c_str());
 		if (!fileInput.good()) {
@@ -51,7 +59,6 @@ void graph1D (vector<string> input, string format = "xy") {
 			else
 				stringstream(line) >> x >> y;
 			
-			
 			graph->SetPoint(point, x, y);
 			graph->SetPointError(point, dx, dy);
 			
@@ -60,21 +67,30 @@ void graph1D (vector<string> input, string format = "xy") {
 		
 		point = 0;
 		
-		graph->SetLineColor(i + 2);
+		graph->SetTitle(tTitle.c_str());
+		graph->SetTitle(tTitle.c_str());
+		colorID += colorID == 10 ? 1 : 0;
+		graph->SetLineColor(colorID);
+		graph->SetLineWidth(2);
 		graph->SetMarkerColor(graph->GetLineColor());
 		graph->SetTitle((input[i] + ";x;y").c_str());
+		if (xMin != xMax) graph->GetXaxis()->SetRangeUser(xMin, xMax);
+		if (yMin != yMax) graph->GetYaxis()->SetRangeUser(yMin, yMax);
 		
 		if (i > 0)
 			graph->Draw("PLE");
 		else
 			graph->Draw("APLE");
+		
+		colorID++;
 	}
 	
 	if (input.size() > 1)
 		legend->Draw();
 	
-	input[0] += ".root";
-
-	graph->SaveAs(input[0].c_str());
+	for (unsigned int i = 0; i < outputFormat.size(); i++) {
+		outputFile = input[0] + "." + outputFormat[i];
+		c->SaveAs(outputFile.c_str());
+	}
 	return;
 }
